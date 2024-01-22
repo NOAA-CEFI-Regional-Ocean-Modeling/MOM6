@@ -6,7 +6,7 @@ module generic_tracer
 
   use g_tracer_utils, only : g_tracer_type, g_diag_type
 
-  use MOM_variables, only : thermo_var_ptrs
+  use MOM_EOS,           only: EOS_type
 
   implicit none ; private
 
@@ -71,15 +71,13 @@ contains
   end subroutine generic_tracer_coupler_accumulate
 
   !> Calls the corresponding generic_X_update_from_source routine for each package X
-  subroutine generic_tracer_source(Temp,Salt,tv,rho_dzt,dzt,hblt_depth,ilb,jlb,tau,dtts,&
+  subroutine generic_tracer_source(Temp,Salt,rho_dzt,dzt,hblt_depth,ilb,jlb,tau,dtts,&
        grid_dat,model_time,nbands,max_wavelength_band,sw_pen_band,opacity_band,internal_heat,&
-       frunoff,grid_ht, current_wave_stress, sosga)
+       frunoff,grid_ht, current_wave_stress, sosga, eqn_of_state)
     integer,                        intent(in) :: ilb    !< Lower bounds of x extent of input arrays on data domain
     integer,                        intent(in) :: jlb    !< Lower bounds of y extent of input arrays on data domain
     real, dimension(ilb:,jlb:,:),   intent(in) :: Temp   !< Potential temperature [deg C]
     real, dimension(ilb:,jlb:,:),   intent(in) :: Salt   !< Salinity [psu]
-    type(thermo_var_ptrs),          intent(in) :: tv     !< structure containing pointers to available
-                                                         !! thermodynamic fields
     real, dimension(ilb:,jlb:,:),   intent(in) :: rho_dzt !< Mass per unit area of each layer [kg m-2]
     real, dimension(ilb:,jlb:,:),   intent(in) :: dzt    !< Ocean layer thickness [m]
     real, dimension(ilb:,jlb:),     intent(in) :: hblt_depth !< Boundary layer depth [m]
@@ -101,6 +99,7 @@ contains
     real, dimension(ilb:,jlb:),optional,  intent(in) :: grid_ht !< Unknown, and presently unused by MOM6
     real, dimension(ilb:,jlb:),optional , intent(in) :: current_wave_stress !< Unknown, and presently unused by MOM6
     real,                      optional , intent(in) :: sosga !< Global average sea surface salinity [ppt]
+    type(EOS_type),            optional,  intent(in) :: eqn_of_state
   end subroutine generic_tracer_source
 
   !> Update the tracers from bottom fluxes
