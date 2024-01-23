@@ -96,8 +96,8 @@ contains
     real, dimension(ilb:,jlb:),optional,  intent(in) :: grid_ht !< Unknown, and presently unused by MOM6
     real, dimension(ilb:,jlb:),optional , intent(in) :: current_wave_stress !< Unknown, and presently unused by MOM6
     real,                      optional , intent(in) :: sosga !< Global average sea surface salinity [ppt]
-    real, dimension(ilb:,jlb:),optional,  intent(in) :: geolat
-    type(EOS_type),            optional,  intent(in) :: eqn_of_state
+    real, dimension(ilb:,jlb:),optional,  intent(in) :: geolat !< Latitude
+    type(EOS_type),            optional,  intent(in) :: eqn_of_state !< A pointer to the equation of state
   end subroutine generic_tracer_source
 
   !> Update the tracers from bottom fluxes
