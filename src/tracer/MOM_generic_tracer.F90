@@ -420,8 +420,7 @@ contains
       endif
     enddo ; enddo
     call g_tracer_set_common(G%isc,G%iec,G%jsc,G%jec,G%isd,G%ied,G%jsd,G%jed,&
-                             GV%ke,1,CS%diag%axesTL%handles,grid_tmask,grid_kmt,day,&
-                             G%geolonT,G%geolatT)
+                             GV%ke,1,CS%diag%axesTL%handles,grid_tmask,grid_kmt,day)
 
     ! Register generic tracer modules diagnostics
 
@@ -562,7 +561,7 @@ contains
       call generic_tracer_source(tv%T, tv%S, rho_dzt, dzt, dz_ml, G%isd, G%jsd, 1, dt, &
                G%areaT, get_diag_time_end(CS%diag), &
                optics%nbands, optics%max_wavelength_band, optics%sw_pen_band, optics%opacity_band, &
-               internal_heat=tv%internal_heat, frunoff=fluxes%frunoff, sosga=sosga, eqn_of_state=tv%eqn_of_state)
+               internal_heat=tv%internal_heat, frunoff=fluxes%frunoff, sosga=sosga, geolat=G%geolatT, eqn_of_state=tv%eqn_of_state)
     else
       call generic_tracer_source(US%C_to_degC*tv%T, US%S_to_ppt*tv%S, rho_dzt, dzt, dz_ml, G%isd, G%jsd, 1, dt, &
                G%US%L_to_m**2*G%areaT(:,:), get_diag_time_end(CS%diag), &
@@ -570,7 +569,7 @@ contains
                sw_pen_band=G%US%QRZ_T_to_W_m2*optics%sw_pen_band(:,:,:), &
                opacity_band=G%US%m_to_Z*optics%opacity_band(:,:,:,:), &
                internal_heat=G%US%RZ_to_kg_m2*US%C_to_degC*tv%internal_heat(:,:), &
-               frunoff=G%US%RZ_T_to_kg_m2s*fluxes%frunoff(:,:), sosga=sosga, eqn_of_state=tv%eqn_of_state)
+               frunoff=G%US%RZ_T_to_kg_m2s*fluxes%frunoff(:,:), sosga=sosga, geolat=G%geolatT, eqn_of_state=tv%eqn_of_state)
     endif
 
     ! This uses applyTracerBoundaryFluxesInOut to handle the change in tracer due to freshwater fluxes
