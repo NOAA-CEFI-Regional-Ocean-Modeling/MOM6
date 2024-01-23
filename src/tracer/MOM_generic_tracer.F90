@@ -94,9 +94,8 @@ contains
   !> Initializes the generic tracer packages and adds their tracers to the list
   !! Adds the tracers in the list of generic tracers to the set of MOM tracers (i.e., MOM-register them)
   !! Register these tracers for restart
-  function register_MOM_generic_tracer(HI, G, GV, param_file, CS, tr_Reg, restart_CS)
+  function register_MOM_generic_tracer(HI, GV, param_file, CS, tr_Reg, restart_CS)
     type(hor_index_type),       intent(in)   :: HI         !< Horizontal index ranges
-    type(ocean_grid_type),      intent(in)   :: G          !< The ocean's grid structure
     type(verticalGrid_type),    intent(in)   :: GV         !< The ocean's vertical grid structure
     type(param_file_type),      intent(in)   :: param_file !< A structure to parse for run-time parameters
     type(MOM_generic_tracer_CS), pointer     :: CS         !< Pointer to the control structure for this module
@@ -177,7 +176,7 @@ contains
     ! Initialize all generic tracers
     !
     call generic_tracer_init(HI%isc,HI%iec,HI%jsc,HI%jec,HI%isd,HI%ied,HI%jsd,HI%jed,&
-         GV%ke,ntau,axes,grid_tmask,grid_kmt,set_time(0,0),G%geolonT,G%geolatT)
+         GV%ke,ntau,axes,grid_tmask,grid_kmt,set_time(0,0))
 
 
     !
@@ -421,7 +420,8 @@ contains
       endif
     enddo ; enddo
     call g_tracer_set_common(G%isc,G%iec,G%jsc,G%jec,G%isd,G%ied,G%jsd,G%jed,&
-                             GV%ke,1,CS%diag%axesTL%handles,grid_tmask,grid_kmt,day,G%geolonT,G%geolatT)
+                             GV%ke,1,CS%diag%axesTL%handles,grid_tmask,grid_kmt,day,&
+                             G%geolonT,G%geolatT)
 
     ! Register generic tracer modules diagnostics
 

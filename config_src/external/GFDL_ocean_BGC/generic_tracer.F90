@@ -34,8 +34,7 @@ contains
   end subroutine generic_tracer_register
 
   !> Initialize generic tracers
-  subroutine generic_tracer_init(isc,iec,jsc,jec,isd,ied,jsd,jed,nk,ntau,axes,grid_tmask,grid_kmt,init_time, &
-                                 geolon,geolat)
+  subroutine generic_tracer_init(isc,iec,jsc,jec,isd,ied,jsd,jed,nk,ntau,axes,grid_tmask,grid_kmt,init_time)
     integer,                       intent(in) :: isc !< Computation start index in i direction
     integer,                       intent(in) :: iec !< Computation end index in i direction
     integer,                       intent(in) :: jsc !< Computation start index in j direction
@@ -50,8 +49,6 @@ contains
     type(time_type),               intent(in) :: init_time !< Time
     real, dimension(:,:,:),target, intent(in) :: grid_tmask !< Mask
     integer, dimension(:,:)      , intent(in) :: grid_kmt !< Number of wet cells in column
-    real, dimension(:,:),target,   intent(in) :: geolon !< Longitude
-    real, dimension(:,:),target,   intent(in) :: geolat !< Latitude
   end subroutine generic_tracer_init
 
   !> Unknown
