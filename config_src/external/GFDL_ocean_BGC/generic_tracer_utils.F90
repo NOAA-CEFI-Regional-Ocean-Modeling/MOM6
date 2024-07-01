@@ -334,7 +334,7 @@ contains
   !!  for a tracer node.This is ported from GOLD (vertdiff) and simplified
   !! Since the surface flux from the atmosphere (%stf) has the units of mol/m^2/sec the resulting
   !!  tracer concentration has units of mol/Kg
-  subroutine g_tracer_vertdiff_G(g_tracer, h_old, ea, eb, dt, kg_m2_to_H, m_to_H, tau, mom)
+  subroutine g_tracer_vertdiff(g_tracer, h_old, ea, eb, dt, kg_m2_to_H, m_to_H, tau, mom)
     type(g_tracer_type),    pointer  :: g_tracer !< Unknown
     !> Layer thickness before entrainment, in m or kg m-2.
     real, dimension(g_tracer_com%isd:,g_tracer_com%jsd:,:), intent(in) :: h_old
@@ -349,6 +349,6 @@ contains
                                    !! of h_old (H).
     integer,  intent(in) :: tau !< Unknown
     logical,  intent(in), optional :: mom !< Unknown
-  end subroutine g_tracer_vertdiff_G
+  end subroutine g_tracer_vertdiff
 
 end module g_tracer_utils

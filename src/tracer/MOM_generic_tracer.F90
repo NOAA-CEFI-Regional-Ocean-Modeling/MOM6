@@ -20,7 +20,7 @@ module MOM_generic_tracer
   use generic_tracer, only: generic_tracer_init, generic_tracer_source, generic_tracer_register_diag
   use generic_tracer, only: generic_tracer_coupler_get, generic_tracer_coupler_set
   use generic_tracer, only: generic_tracer_end, generic_tracer_get_list, do_generic_tracer
-  use generic_tracer, only: generic_tracer_update_from_bottom,generic_tracer_vertdiff_G
+  use generic_tracer, only: generic_tracer_update_from_bottom,generic_tracer_vertdiff
   use generic_tracer, only: generic_tracer_coupler_accumulate
 
   use g_tracer_utils,   only: g_tracer_get_name,g_tracer_set_values,g_tracer_set_common,g_tracer_get_common
@@ -620,10 +620,10 @@ contains
     ! surface source is applied and diapycnal advection and diffusion occurs.
     if (present(evap_CFL_limit) .and. present(minimum_forcing_depth)) then
       ! Last arg is tau which is always 1 for MOM6
-      call generic_tracer_vertdiff_G(h_work, ea, eb, US%T_to_s*dt, GV%kg_m2_to_H, GV%m_to_H, 1)
+      call generic_tracer_vertdiff(h_work, ea, eb, US%T_to_s*dt, GV%kg_m2_to_H, GV%m_to_H, 1)
     else
       ! Last arg is tau which is always 1 for MOM6
-      call generic_tracer_vertdiff_G(h_old, ea, eb, US%T_to_s*dt, GV%kg_m2_to_H, GV%m_to_H, 1)
+      call generic_tracer_vertdiff(h_old, ea, eb, US%T_to_s*dt, GV%kg_m2_to_H, GV%m_to_H, 1)
     endif
 
     ! Update bottom fields after vertical processes

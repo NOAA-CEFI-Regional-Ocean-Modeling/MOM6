@@ -20,7 +20,7 @@ module generic_tracer
   public generic_tracer_end
   public generic_tracer_get_list
   public do_generic_tracer
-  public generic_tracer_vertdiff_G
+  public generic_tracer_vertdiff
   public generic_tracer_get_diag_list
   public generic_tracer_coupler_accumulate
 
@@ -108,7 +108,7 @@ contains
   end subroutine generic_tracer_update_from_bottom
 
   !> Vertically diffuse all generic tracers for GOLD ocean
-  subroutine generic_tracer_vertdiff_G(h_old, ea, eb, dt, kg_m2_to_H, m_to_H, tau)
+  subroutine generic_tracer_vertdiff(h_old, ea, eb, dt, kg_m2_to_H, m_to_H, tau)
     real, dimension(:,:,:), intent(in) :: h_old  !< Layer thickness before entrainment [H ~> m or kg m-2]
     real, dimension(:,:,:), intent(in) :: ea     !< The amount of fluid entrained from the layer
                                                  !! above during this call [H ~> m or kg m-2]
@@ -120,7 +120,7 @@ contains
     real,                   intent(in) :: m_to_H !< A unit conversion factor from heights to
                                                  !! thickness units [H m-1 ~> 1 or kg m-3]
     integer,                intent(in) :: tau    !< The time level to work on (always 1 for MOM6)
-  end subroutine generic_tracer_vertdiff_G
+  end subroutine generic_tracer_vertdiff
 
   !> Set the coupler values for each generic tracer
   subroutine generic_tracer_coupler_set(IOB_struc, ST,SS,rho,ilb,jlb,tau, dzt, sosga,model_time)
