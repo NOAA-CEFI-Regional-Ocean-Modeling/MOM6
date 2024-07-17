@@ -187,44 +187,6 @@ subroutine advect_tracer(h_end, uhtr, vhtr, OBC, dt, G, GV, US, CS, Reg, x_first
   ! initialize diagnostic fluxes and tendencies
   !$OMP do
   do m=1,ntr
-!    if (associated(Tr(m)%ad_x)) then
-!      do k=1,nz ; do j=jsd,jed ; do i=isd,ied
-!        Tr(m)%ad_x(I,j,k) = 0.0
-!      enddo ; enddo ; enddo
-!    endif
-!    if (associated(Tr(m)%ad_y)) then
-!      do k=1,nz ; do J=jsd,jed ; do i=isd,ied
-!        Tr(m)%ad_y(i,J,k) = 0.0
-!      enddo ; enddo ; enddo
-!    endif
-!    if (associated(Tr(m)%advection_xy)) then
-!      do k=1,nz ; do j=jsd,jed ; do i=isd,ied
-!        Tr(m)%advection_xy(i,j,k) = 0.0
-!      enddo ; enddo ; enddo
-!    endif
-!    !liao
-!    if (associated(Tr(m)%advectionc_xy)) then
-!      do k=1,nz ; do j=jsd,jed ; do i=isd,ied
-!        Tr(m)%advectionc_xy(i,j,k) = 0.0
-!      enddo ; enddo ; enddo
-!    endif
-!    if (associated(Tr(m)%advectionc_x)) then
-!      do k=1,nz ; do j=jsd,jed ; do i=isd,ied
-!        Tr(m)%advectionc_x(i,j,k) = 0.0
-!      enddo ; enddo ; enddo
-!    endif
-!    if (associated(Tr(m)%advectionc_y)) then
-!      do k=1,nz ; do j=jsd,jed ; do i=isd,ied
-!        Tr(m)%advectionc_y(i,j,k) = 0.0
-!      enddo ; enddo ; enddo
-!    endif
-!    !liao
-!    if (associated(Tr(m)%ad2d_x)) then
-!      do j=jsd,jed ; do i=isd,ied ; Tr(m)%ad2d_x(I,j) = 0.0 ; enddo ; enddo
-!    endif
-!    if (associated(Tr(m)%ad2d_y)) then
-!      do J=jsd,jed ; do i=isd,ied ; Tr(m)%ad2d_y(i,J) = 0.0 ; enddo ; enddo
-!    endif
     if (associated(Reg%Tr(m)%ad_x)) Reg%Tr(m)%ad_x(:,:,:) = 0.0
     if (associated(Reg%Tr(m)%ad_y)) Reg%Tr(m)%ad_y(:,:,:) = 0.0
     if (associated(Reg%Tr(m)%advection_xy)) Reg%Tr(m)%advection_xy(:,:,:) = 0.0
