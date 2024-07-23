@@ -2859,9 +2859,16 @@ subroutine initialize_MOM(Time, Time_init, param_file, dirs, CS, &
   endif
 
   if (associated(CS%OBC)) then
+    ! If the dt of OBC segment updates for OBGC is longer than dt_therm, the OBC inflow conc 
+    ! will be saved in restart to ensure reproducibility across restarts.
+    ! CS%OBC%level_count controls the size of the 5th dimension of tres_x or tres_y
+    ! The default value is 1 for saving tracer reservoir, and 2 is for saving tracer inflow conc
+    if (CS%dt_obc_seg_period > CS%dt_therm) CS%OBC%inflow_conc_restart = .true.
+    if (CS%OBC%inflow_conc_restart) CS%OBC%level_count = 2
+      
     ! Set up remaining information about open boundary conditions that is needed for OBCs.
     call call_OBC_register(G, GV, US, param_file, CS%update_OBC_CSp, CS%OBC, CS%tracer_Reg)
-  !### Package specific changes to OBCs need to go here?
+    !### Package specific changes to OBCs need to go here?
 
     ! This is the equivalent to 2 calls to register_segment_tracer (per segment), which
     ! could occur with the call to update_OBC_data or after the main initialization.

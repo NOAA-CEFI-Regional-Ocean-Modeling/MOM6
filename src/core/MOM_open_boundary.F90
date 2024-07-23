@@ -290,6 +290,7 @@ type, public :: ocean_OBC_type
   logical :: update_OBC = .false.                     !< Is OBC data time-dependent
   logical :: update_OBC_seg_data = .false.            !< Is it the time for OBC segment data update for fields that
                                                       !! require less frequent update
+  logical :: inflow_conc_restart = .false.            !< If Ture save tracer inflow conc in restart                                         
   logical :: needs_IO_for_data = .false.              !< Is any i/o needed for OBCs on the current PE
   logical :: any_needs_IO_for_data = .false.          !< Is any i/o needed for OBCs globally
   logical :: some_need_no_IO_for_data = .false.       !< Are there any PEs with OBCs that do not need i/o.
@@ -315,6 +316,8 @@ type, public :: ocean_OBC_type
   logical, allocatable :: tracer_y_reservoirs_used(:) !< Dimensioned by the number of tracers, set globally,
                                                       !! true for those with y reservoirs (needed for restarts).
   integer                       :: ntr = 0            !< number of tracers
+  integer                       :: level_count = 1    !< size of the 5th dimension of tres_x/trex_y, defalut is 1
+                                                      !! it will be 2 when inflow_conc_restart is true.
   integer :: n_tide_constituents = 0                  !< Number of tidal constituents to add to the boundary.
   logical :: add_tide_constituents = .false.          !< If true, add tidal constituents to the boundary elevation
                                                       !! and velocity. Will be set to true if n_tide_constituents > 0.
@@ -364,8 +367,8 @@ type, public :: ocean_OBC_type
                                            !! rates at u points for restarts [L2 T-2 ~> m2 s-2]
   real, allocatable :: cff_normal_v(:,:,:) !< Denominator for normalizing NS oblique boundary condition radiation
                                            !! rates at v points for restarts [L2 T-2 ~> m2 s-2]
-  real, allocatable :: tres_x(:,:,:,:)   !< Array storage of tracer reservoirs for restarts, in unscaled units [conc]
-  real, allocatable :: tres_y(:,:,:,:)   !< Array storage of tracer reservoirs for restarts, in unscaled units [conc]
+  real, allocatable :: tres_x(:,:,:,:,:)   !< Array storage of tracer reservoirs for restarts, in unscaled units [conc]
+  real, allocatable :: tres_y(:,:,:,:,:)   !< Array storage of tracer reservoirs for restarts, in unscaled units [conc]
   logical :: debug                       !< If true, write verbose checksums for debugging purposes.
   real :: silly_h  !< A silly value of thickness outside of the domain that can be used to test
                    !! the independence of the OBCs to this external data [Z ~> m].
@@ -1912,15 +1915,21 @@ subroutine open_boundary_init(G, GV, US, param_file, OBC, restart_CS)
   endif
   if (allocated(OBC%tres_x) .and. allocated(OBC%tres_y)) then
     do m=1,OBC%ntr
-      call pass_vector(OBC%tres_x(:,:,:,m), OBC%tres_y(:,:,:,m), G%Domain, To_All+Scalar_Pair)
+      call pass_vector(OBC%tres_x(:,:,:,m,1), OBC%tres_y(:,:,:,m,1), G%Domain, To_All+Scalar_Pair)
+      if (OBC%inflow_conc_restart) &
+        call pass_vector(OBC%tres_x(:,:,:,m,2), OBC%tres_y(:,:,:,m,2), G%Domain, To_All+Scalar_Pair)
     enddo
   elseif (allocated(OBC%tres_x)) then
     do m=1,OBC%ntr
-      call pass_var(OBC%tres_x(:,:,:,m), G%Domain, position=EAST_FACE)
+      call pass_var(OBC%tres_x(:,:,:,m,1), G%Domain, position=EAST_FACE)
+      if (OBC%inflow_conc_restart) &
+        call pass_var(OBC%tres_x(:,:,:,m,2), G%Domain, position=EAST_FACE)
     enddo
   elseif (allocated(OBC%tres_y)) then
     do m=1,OBC%ntr
-      call pass_var(OBC%tres_y(:,:,:,m), G%Domain, position=NORTH_FACE)
+      call pass_var(OBC%tres_y(:,:,:,m,1), G%Domain, position=NORTH_FACE)
+      if (OBC%inflow_conc_restart) &
+        call pass_var(OBC%tres_y(:,:,:,m,2), G%Domain, position=NORTH_FACE)
     enddo
   endif
 
@@ -2175,7 +2184,7 @@ subroutine setup_OBC_tracer_reservoirs(G, GV, OBC)
           if (allocated(segment%tr_Reg%Tr(m)%tres)) then
             do k=1,GV%ke
               do j=segment%HI%jsd,segment%HI%jed
-                OBC%tres_x(I,j,k,m) = I_scale * segment%tr_Reg%Tr(m)%t(i,j,k)
+                OBC%tres_x(I,j,k,m,1) = I_scale * segment%tr_Reg%Tr(m)%t(i,j,k)
               enddo
             enddo
           endif
@@ -2187,7 +2196,7 @@ subroutine setup_OBC_tracer_reservoirs(G, GV, OBC)
           if (allocated(segment%tr_Reg%Tr(m)%tres)) then
             do k=1,GV%ke
               do i=segment%HI%isd,segment%HI%ied
-                OBC%tres_y(i,J,k,m) = I_scale * segment%tr_Reg%Tr(m)%t(i,J,k)
+                OBC%tres_y(i,J,k,m,1) = I_scale * segment%tr_Reg%Tr(m)%t(i,J,k)
               enddo
             enddo
           endif
@@ -2304,7 +2313,7 @@ subroutine radiation_open_bdry_conds(OBC, u_new, u_old, v_new, v_old, G, GV, US,
           if (allocated(segment%tr_Reg%Tr(m)%tres)) then
             do k=1,GV%ke
               do j=segment%HI%jsd,segment%HI%jed
-                segment%tr_Reg%Tr(m)%tres(I,j,k) = segment%tr_Reg%Tr(m)%scale * OBC%tres_x(I,j,k,m)
+                segment%tr_Reg%Tr(m)%tres(I,j,k) = segment%tr_Reg%Tr(m)%scale * OBC%tres_x(I,j,k,m,1)
               enddo
             enddo
           endif
@@ -2315,7 +2324,7 @@ subroutine radiation_open_bdry_conds(OBC, u_new, u_old, v_new, v_old, G, GV, US,
           if (allocated(segment%tr_Reg%Tr(m)%tres)) then
             do k=1,GV%ke
               do i=segment%HI%isd,segment%HI%ied
-                segment%tr_Reg%Tr(m)%tres(i,J,k) = segment%tr_Reg%Tr(m)%scale * OBC%tres_y(i,J,k,m)
+                segment%tr_Reg%Tr(m)%tres(i,J,k) = segment%tr_Reg%Tr(m)%scale * OBC%tres_y(i,J,k,m,1)
               enddo
             enddo
           endif
@@ -3332,7 +3341,7 @@ subroutine radiation_open_bdry_conds(OBC, u_new, u_old, v_new, v_old, G, GV, US,
     if (.not. allocated (OBC%tres_x) .or. .not. allocated (OBC%tres_y)) return
     do m=1,OBC%ntr
       write(var_num,'(I3.3)') m
-      call uvchksum("radiation_OBCs: OBC%tres_[xy]_"//var_num, OBC%tres_x(:,:,:,m), OBC%tres_y(:,:,:,m), G%HI, &
+      call uvchksum("radiation_OBCs: OBC%tres_[xy]_"//var_num, OBC%tres_x(:,:,:,m,1), OBC%tres_y(:,:,:,m,1), G%HI, &
                     haloshift=0, symmetric=sym, unscale=1.0)
     enddo
   endif
@@ -4319,8 +4328,25 @@ subroutine update_OBC_segment_data(G, GV, US, OBC, tv, h, Time)
     ! Start second loop to update all fields now that data for all fields are available.
     ! (split because tides depend on multiple variables).
     do m = 1,segment%num_fields
-      !cycle if it is not the time to update OBGC tracers from source
-      if (trim(segment%field(m)%genre) == 'obgc' .and. (.not. OBC%update_OBC_seg_data)) cycle
+    ! If it is not the time to update OBGC tracers from source, try read inflow conc from restart
+      if (trim(segment%field(m)%genre) == 'obgc' .and. (.not. OBC%update_OBC_seg_data)) then
+        if (OBC%inflow_conc_restart) then      
+          nt=get_tracer_index(segment,trim(segment%field(m)%name))
+          if (segment%is_E_or_W) then
+            I=segment%HI%IsdB
+            do k=1,nz ; do j=segment%HI%jsd,segment%HI%jed
+              segment%tr_Reg%Tr(nt)%t(i,j,k) = OBC%tres_x(I,j,k,nt,2)
+            enddo ; enddo
+          else
+            J=segment%HI%JsdB
+            do k=1,nz ; do i=segment%HI%isd,segment%HI%ied
+              segment%tr_Reg%Tr(nt)%t(i,j,k) = OBC%tres_y(i,J,k,nt,2)
+            enddo ; enddo
+          endif
+        endif  
+        ! Skip the rest of the loop iteration      
+        cycle
+      endif  
       ! if (segment%field(m)%use_IO) then
       ! calculate external BT velocity and transport if needed
       if (trim(segment%field(m)%name) == 'U' .or. trim(segment%field(m)%name) == 'V') then
@@ -4515,7 +4541,14 @@ subroutine update_OBC_segment_data(G, GV, US, OBC, tv, h, Time)
         if (allocated(segment%field(m)%buffer_dst)) then
           do k=1,nz; do j=js_obc2, je_obc; do i=is_obc2,ie_obc
             segment%tr_Reg%Tr(nt)%t(i,j,k) = segment%field(m)%buffer_dst(i,j,k)
-          enddo ; enddo ; enddo
+            if (OBC%inflow_conc_restart) then
+              if (segment%is_E_or_W) then 
+                OBC%tres_x(i,j,k,nt,2) =  segment%tr_Reg%Tr(nt)%t(i,j,k)       
+              else
+                OBC%tres_y(i,j,k,nt,2) =  segment%tr_Reg%Tr(nt)%t(i,j,k)
+              endif    
+            endif        
+          enddo ; enddo ; enddo 
           if (.not. segment%tr_Reg%Tr(nt)%is_initialized) then
             !if the tracer reservoir has not yet been initialized, then set to external value.
             do k=1,nz; do j=js_obc2, je_obc; do i=is_obc2,ie_obc
@@ -4940,7 +4973,7 @@ subroutine fill_obgc_segments(G, GV, OBC, tr_ptr, tr_name)
         else
           segment%tr_Reg%Tr(nt)%t(I,j,k) = tr_ptr(i,j,k)
         endif
-        OBC%tres_x(I,j,k,nt) = I_scale * segment%tr_Reg%Tr(nt)%t(I,j,k)
+        OBC%tres_x(I,j,k,nt,1) = I_scale * segment%tr_Reg%Tr(nt)%t(I,j,k)
       enddo ; enddo
     else
       J=segment%HI%JsdB
@@ -4950,7 +4983,7 @@ subroutine fill_obgc_segments(G, GV, OBC, tr_ptr, tr_name)
         else
           segment%tr_Reg%Tr(nt)%t(i,J,k) = tr_ptr(i,j,k)
         endif
-        OBC%tres_y(i,J,k,nt) = I_scale * segment%tr_Reg%Tr(nt)%t(i,J,k)
+        OBC%tres_y(i,J,k,nt,1) = I_scale * segment%tr_Reg%Tr(nt)%t(i,J,k)
       enddo ; enddo
     endif
     segment%tr_Reg%Tr(nt)%tres(:,:,:) = segment%tr_Reg%Tr(nt)%t(:,:,:)
@@ -5341,33 +5374,49 @@ subroutine open_boundary_register_restarts(HI, GV, US, OBC, Reg, param_file, res
 
   ! Still painfully inefficient, now in four dimensions.
   if (any(OBC%tracer_x_reservoirs_used)) then
-    allocate(OBC%tres_x(HI%isdB:HI%iedB,HI%jsd:HI%jed,GV%ke,OBC%ntr), source=0.0)
+    allocate(OBC%tres_x(HI%isdB:HI%iedB,HI%jsd:HI%jed,GV%ke,OBC%ntr,OBC%level_count), source=0.0)
     do m=1,OBC%ntr
       if (OBC%tracer_x_reservoirs_used(m)) then
         if (modulo(HI%turns, 2) /= 0) then
           write(var_name,'("tres_y_",I3.3)') m
-          call register_restart_field(OBC%tres_x(:,:,:,m), var_name, .false., restart_CS, &
+          call register_restart_field(OBC%tres_x(:,:,:,m,1), var_name, .false., restart_CS, &
                    longname="Tracer concentration for NS OBCs", units="Conc", hor_grid='v')
+          write(var_name,'("inflow_t_y_",I3.3)') m
+          if (m > 2 .and. OBC%inflow_conc_restart) &
+          call register_restart_field(OBC%tres_x(:,:,:,m,2), var_name, .false., restart_CS, &
+                   longname="Inflow tracer concentration for NS OBCs", units="Conc", hor_grid='v')
         else
           write(var_name,'("tres_x_",I3.3)') m
-          call register_restart_field(OBC%tres_x(:,:,:,m), var_name, .false., restart_CS, &
+          call register_restart_field(OBC%tres_x(:,:,:,m,1), var_name, .false., restart_CS, &
                    longname="Tracer concentration for EW OBCs", units="Conc", hor_grid='u')
+          write(var_name,'("inflow_t_x_",I3.3)') m
+          if (m > 2 .and. OBC%inflow_conc_restart) &
+          call register_restart_field(OBC%tres_x(:,:,:,m,2), var_name, .false., restart_CS, &
+                   longname="Inflow tracer concentration for EW OBCs", units="Conc", hor_grid='u')        
         endif
       endif
     enddo
   endif
   if (any(OBC%tracer_y_reservoirs_used)) then
-    allocate(OBC%tres_y(HI%isd:HI%ied,HI%jsdB:HI%jedB,GV%ke,OBC%ntr), source=0.0)
+    allocate(OBC%tres_y(HI%isd:HI%ied,HI%jsdB:HI%jedB,GV%ke,OBC%ntr,OBC%level_count), source=0.0)
     do m=1,OBC%ntr
       if (OBC%tracer_y_reservoirs_used(m)) then
         if (modulo(HI%turns, 2) /= 0) then
           write(var_name,'("tres_x_",I3.3)') m
-          call register_restart_field(OBC%tres_y(:,:,:,m), var_name, .false., restart_CS, &
+          call register_restart_field(OBC%tres_y(:,:,:,m,1), var_name, .false., restart_CS, &
                    longname="Tracer concentration for EW OBCs", units="Conc", hor_grid='u')
+          write(var_name,'("inflow_t_x_",I3.3)') m
+          if (m > 2 .and. OBC%inflow_conc_restart) &
+          call register_restart_field(OBC%tres_y(:,:,:,m,2), var_name, .false., restart_CS, &
+                   longname="Inflow tracer concentration for EW OBCs", units="Conc", hor_grid='u')        
         else
           write(var_name,'("tres_y_",I3.3)') m
-          call register_restart_field(OBC%tres_y(:,:,:,m), var_name, .false., restart_CS, &
+          call register_restart_field(OBC%tres_y(:,:,:,m,1), var_name, .false., restart_CS, &
                    longname="Tracer concentration for NS OBCs", units="Conc", hor_grid='v')
+          write(var_name,'("inflow_t_y_",I3.3)') m
+          if (m > 2 .and. OBC%inflow_conc_restart) &
+          call register_restart_field(OBC%tres_y(:,:,:,m,2), var_name, .false., restart_CS, &
+                   longname="Inflow tracer concentration for NS OBCs", units="Conc", hor_grid='v')          
         endif
       endif
     enddo
@@ -5458,7 +5507,7 @@ subroutine update_segment_tracer_reservoirs(G, GV, uhr, vhr, h, OBC, dt, Reg)
                               ((1.0-a_out+a_in)*segment%tr_Reg%Tr(m)%tres(I,j,k)+ &
                               ((u_L_out+a_out)*Reg%Tr(ntr_id)%t(I+ishift,j,k) - &
                                (u_L_in+a_in)*segment%tr_Reg%Tr(m)%t(I,j,k)))
-            if (allocated(OBC%tres_x)) OBC%tres_x(I,j,k,m) = I_scale * segment%tr_Reg%Tr(m)%tres(I,j,k)
+            if (allocated(OBC%tres_x)) OBC%tres_x(I,j,k,m,1) = I_scale * segment%tr_Reg%Tr(m)%tres(I,j,k)
           enddo ; endif
         enddo
       enddo
@@ -5498,7 +5547,7 @@ subroutine update_segment_tracer_reservoirs(G, GV, uhr, vhr, h, OBC, dt, Reg)
                               ((1.0-a_out+a_in)*segment%tr_Reg%Tr(m)%tres(i,J,k) + &
                               ((v_L_out+a_out)*Reg%Tr(ntr_id)%t(i,J+jshift,k) - &
                                (v_L_in+a_in)*segment%tr_Reg%Tr(m)%t(i,J,k)))
-            if (allocated(OBC%tres_y)) OBC%tres_y(i,J,k,m) = I_scale * segment%tr_Reg%Tr(m)%tres(i,J,k)
+            if (allocated(OBC%tres_y)) OBC%tres_y(i,J,k,m,1) = I_scale * segment%tr_Reg%Tr(m)%tres(i,J,k)
           enddo ; endif
         enddo
       enddo
@@ -5578,7 +5627,7 @@ subroutine remap_OBC_fields(G, GV, h_old, h_new, OBC, PCM_cell)
           ! Update tracer concentrations
           segment%tr_Reg%Tr(m)%tres(I,j,:) = tr_column(:)
           if (allocated(OBC%tres_x)) then ; do k=1,nz
-            OBC%tres_x(I,j,k,m) = I_scale * segment%tr_Reg%Tr(m)%tres(I,j,k)
+            OBC%tres_x(I,j,k,m,1) = I_scale * segment%tr_Reg%Tr(m)%tres(I,j,k)
           enddo ; endif
 
         endif ; enddo
@@ -5646,7 +5695,7 @@ subroutine remap_OBC_fields(G, GV, h_old, h_new, OBC, PCM_cell)
           ! Update tracer concentrations
           segment%tr_Reg%Tr(m)%tres(i,J,:) = tr_column(:)
           if (allocated(OBC%tres_y)) then ; do k=1,nz
-            OBC%tres_y(i,J,k,m) = I_scale * segment%tr_Reg%Tr(m)%tres(i,J,k)
+            OBC%tres_y(i,J,k,m,1) = I_scale * segment%tr_Reg%Tr(m)%tres(i,J,k)
           enddo ; endif
 
         endif ; enddo
