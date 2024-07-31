@@ -71,14 +71,17 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
                                                ! have been stored already.
   real :: gE_Rho0          ! The gravitational acceleration, sometimes divided by the Boussinesq
                            ! reference density [H T-2 R-1 ~> m4 s-2 kg-1 or m s-2].
-  real :: H_to_RL2_T2      ! A conversion factor from thicknesses in H to pressure [R L2 T-2 H-1 ~> Pa m-1 or Pa m2 kg-1]
+  real :: H_to_RL2_T2      ! A conversion factor from thicknesses in H to 
+                           ! pressure [R L2 T-2 H-1 ~> Pa m-1 or Pa m2 kg-1]
+
   real :: dZ_sub_ML        ! Depth below ML over which to diagnose stratification [Z ~> m]
   real :: aFac             ! A nondimensional factor [nondim]
   real :: ddRho            ! A density difference [R ~> kg m-3]
   real :: dddpth           ! A depth difference [Z ~> m]
   real :: rhoSurf_k, rhoSurf_km1  ! Desisty in the layers below and above the target reference depth [R ~> kg m-3].
   real, dimension(SZI_(G), SZJ_(G)) :: rhoSurf_2d ! The two dimensional density that is considered the "surface"
-                                                  ! when calculating the MLD. It can be saved as a diagnostic [R ~> kg m-3].
+                                                  ! when calculating the MLD. It can be saved 
+                                                  ! as a diagnostic [R ~> kg m-3].
   integer, dimension(2) :: EOSdom ! The i-computational domain for the equation of state
   integer :: i, j, is, ie, js, je, k, nz, id_N2, id_SQ, id_rz, id_rr
 
