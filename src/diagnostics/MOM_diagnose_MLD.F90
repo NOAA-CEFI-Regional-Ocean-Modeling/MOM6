@@ -83,9 +83,12 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
   real, dimension(SZI_(G), SZJ_(G)) :: rhoSurf_2d ! The two dimensional density that is considered the "surface"
                                                   ! when calculating the MLD. It can be saved as a diagnostic [R ~> kg m-3].
   integer, dimension(2) :: EOSdom ! The i-computational domain for the equation of state
-  integer :: i, j, is, ie, js, je, k, nz, id_N2, id_SQ
+  integer :: i, j, is, ie, js, je, k, nz, id_N2, id_SQ, id_rZ, id_rRHO
 
   id_SQ = -1 ; if (PRESENT(id_MLDsq)) id_SQ = id_MLDsq
+
+  id_rZ = -1 ; if (PRESENT(id_ref_z)) id_rZ = id_ref_z
+  id_rRHO = -1; if (PRESENT(id_ref_rho)) id_rRHO = id_ref_rho
 
   id_N2 = -1
   if (present(id_N2subML)) then
@@ -241,8 +244,8 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
   if (id_N2 > 0)  call post_data(id_N2, subMLN2, diagPtr)
   if (id_SQ > 0)  call post_data(id_SQ, MLD2, diagPtr)
 
-  if ((id_ref_z > 0) .and. (pRef_MLD(is).ne.0.)) call post_data(id_ref_z, z_ref_diag , diagPtr)
-  if (id_ref_rho > 0) call post_data(id_ref_rho, rhoSurf_2d , diagPtr)
+  if ((id_rZ > 0) .and. (pRef_MLD(is).ne.0.)) call post_data(id_ref_z, z_ref_diag , diagPtr)
+  if (id_rRHO > 0) call post_data(id_ref_rho, rhoSurf_2d , diagPtr)
 
   if (present(MLD_out)) MLD_out(:,:)=MLD(:,:)
 
