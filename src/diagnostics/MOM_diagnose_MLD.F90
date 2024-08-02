@@ -27,11 +27,10 @@ public diagnoseMLDbyEnergy, diagnoseMLDbyDensityDifference
 ! vary with the Boussinesq approximation, the Boussinesq variant is given first.
 
 contains
-
 !> Diagnose a mixed layer depth (MLD) determined by a given density difference with the surface.
 !> This routine is appropriate in MOM_diabatic_aux due to its position within the time stepping.
 subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US, diagPtr, &
-                                          id_N2subML, id_MLDsq, dz_subML, ref_h_mld, id_ref_z, id_ref_rho, &
+                                          ref_h_mld, id_ref_z, id_ref_rho, id_N2subML, id_MLDsq, dz_subML, &
                                           MLD_out)
   type(ocean_grid_type),   intent(in) :: G           !< Grid type
   type(verticalGrid_type), intent(in) :: GV          !< ocean vertical grid structure
@@ -43,14 +42,13 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
                                                      !! available thermodynamic fields.
   real,                    intent(in) :: densityDiff !< Density difference to determine MLD [R ~> kg m-3]
   type(diag_ctrl),         pointer    :: diagPtr     !< Diagnostics structure
+  real,                    intent(in) :: ref_h_mld   !< Depth of the calculated "surface" densisty [Z ~> m]
+  integer,                 intent(in) :: id_ref_z    !< Handle (ID) of reference depth diagnostic
+  integer,                 intent(in) :: id_ref_rho  !< Handle (ID) of reference density diagnostic
   integer,       optional, intent(in) :: id_N2subML  !< Optional handle (ID) of subML stratification
   integer,       optional, intent(in) :: id_MLDsq    !< Optional handle (ID) of squared MLD
   real,          optional, intent(in) :: dz_subML    !< The distance over which to calculate N2subML
                                                      !! or 50 m if missing [Z ~> m]
-  real,          optional, intent(in) :: ref_h_mld   !< Optional reference depth used to calculate the
-                                                     !! densisty, defaults to 0.0 if not present [Z ~> m].
-  integer,       optional, intent(in) :: id_ref_z    !< Handle (ID) of reference depth diagnostic
-  integer,       optional, intent(in) :: id_ref_rho  !< Handle (ID) of reference density diagnostic
   real, dimension(SZI_(G),SZJ_(G)), &
                  optional, intent(inout) :: MLD_out  !< Send MLD to other routines [Z ~> m]
 
@@ -74,21 +72,17 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
                                                ! have been stored already.
   real :: gE_Rho0          ! The gravitational acceleration, sometimes divided by the Boussinesq
                            ! reference density [H T-2 R-1 ~> m4 s-2 kg-1 or m s-2].
-  real :: H_to_RL2_T2      ! A conversion factor from thicknesses in H to pressure [R L2 T-2 H-1 ~> Pa m-1 or Pa m2 kg-1]
   real :: dZ_sub_ML        ! Depth below ML over which to diagnose stratification [Z ~> m]
   real :: aFac             ! A nondimensional factor [nondim]
   real :: ddRho            ! A density difference [R ~> kg m-3]
   real :: dddpth           ! A depth difference [Z ~> m]
   real :: rhoSurf_k, rhoSurf_km1  ! Desisty in the layers below and above the target reference depth [R ~> kg m-3].
-  real, dimension(SZI_(G), SZJ_(G)) :: rhoSurf_2d ! The two dimensional density that is considered the "surface"
-                                                  ! when calculating the MLD. It can be saved as a diagnostic [R ~> kg m-3].
+  real, dimension(SZI_(G), SZJ_(G)) :: rhoSurf_2d ! The density that is considered the "surface" when calculating
+                                                  ! the MLD. It can be saved as a diagnostic [R ~> kg m-3].
   integer, dimension(2) :: EOSdom ! The i-computational domain for the equation of state
-  integer :: i, j, is, ie, js, je, k, nz, id_N2, id_SQ, id_rZ, id_rRHO
+  integer :: i, j, is, ie, js, je, k, nz, id_N2, id_SQ
 
   id_SQ = -1 ; if (PRESENT(id_MLDsq)) id_SQ = id_MLDsq
-
-  id_rZ = -1 ; if (PRESENT(id_ref_z)) id_rZ = id_ref_z
-  id_rRHO = -1; if (PRESENT(id_ref_rho)) id_rRHO = id_ref_rho
 
   id_N2 = -1
   if (present(id_N2subML)) then
@@ -106,12 +100,8 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
 
   is = G%isc ; ie = G%iec ; js = G%jsc ; je = G%jec ; nz = GV%ke
 
-  pRef_MLD(:) = 0.0; hRef_MLD(:) = 0.0
-  if (present(ref_h_mld)) hRef_MLD(:) = ref_h_mld
-  if (present(ref_h_mld)) then
-    H_to_RL2_T2 = GV%H_to_RZ * GV%g_Earth
-    pRef_MLD(:) = H_to_RL2_T2*ref_h_mld
-  endif
+  hRef_MLD(:) = ref_h_mld
+  pRef_MLD(:) = GV%H_to_RZ*GV%g_Earth*ref_h_mld
   z_ref_diag(:,:) = 0.
 
   EOSdom(:) = EOS_domain(G%HI)
@@ -119,7 +109,7 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
     ! Find the vertical distances across layers.
     call thickness_to_dz(h, tv, dZ_2d, j, G, GV)
 
-    if (pRef_MLD(is) .ne. 0.0) then
+    if (pRef_MLD(is) /= 0.0) then
       rhoSurf(:) = 0.0
       do i=is,ie
         dZ(i) = 0.5 * dZ_2d(i,1) ! Depth of center of surface layer
@@ -141,7 +131,7 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
             call calculate_density(tv%T(i,j,k-1), tv%S(i,j,k-1), pRef_MLD(i), rhoSurf_km1, tv%eqn_of_state)
             rhoSurf(i) = (rhoSurf_k * aFac + rhoSurf_km1 * (1. - aFac))
             H_subML(i) = h(i,j,k)
-          elseif ((rhoSurf(i) == 0.) .and. (k>=nz)) then
+          elseif ((rhoSurf(i) == 0.) .and. (k >= nz)) then
             call calculate_density(tv%T(i,j,1), tv%S(i,j,1), pRef_MLD(i), rhoSurf_k, tv%eqn_of_state)
             rhoSurf(i) = rhoSurf_k
           endif
@@ -149,7 +139,7 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
       enddo
       do i=is,ie
         dZ(i) = 0.5 * dZ_2d(i,1) ! reset dZ to surface depth
-        rhoSurf_2d(i,j)=rhoSurf(i)
+        rhoSurf_2d(i,j) = rhoSurf(i)
         deltaRhoAtK(i) = 0.
         MLD(i,j) = 0.
         if (id_N2>0) then
@@ -164,7 +154,7 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
       do i=is,ie ; dZ(i) = 0.5 * dZ_2d(i,1) ; enddo ! Depth of center of surface layer
       call calculate_density(tv%T(:,j,1), tv%S(:,j,1), pRef_MLD, rhoSurf, tv%eqn_of_state, EOSdom)
       do i=is,ie
-        rhoSurf_2d(i,j)=rhoSurf(i)
+        rhoSurf_2d(i,j) = rhoSurf(i)
         deltaRhoAtK(i) = 0.
         MLD(i,j) = 0.
         if (id_N2>0) then
@@ -244,9 +234,8 @@ subroutine diagnoseMLDbyDensityDifference(id_MLD, h, tv, densityDiff, G, GV, US,
   if (id_N2 > 0)  call post_data(id_N2, subMLN2, diagPtr)
   if (id_SQ > 0)  call post_data(id_SQ, MLD2, diagPtr)
 
-  if ((id_rZ > 0) .and. (pRef_MLD(is).ne.0.)) call post_data(id_ref_z, z_ref_diag , diagPtr)
-  if (id_rRHO > 0) call post_data(id_ref_rho, rhoSurf_2d , diagPtr)
-
+  if ((id_ref_z > 0) .and. (pRef_MLD(is)/=0.)) call post_data(id_ref_z, z_ref_diag , diagPtr)
+  if (id_ref_rho > 0) call post_data(id_ref_rho, rhoSurf_2d , diagPtr)
   if (present(MLD_out)) MLD_out(:,:)=MLD(:,:)
 
 end subroutine diagnoseMLDbyDensityDifference
@@ -485,7 +474,6 @@ subroutine diagnoseMLDbyEnergy(id_MLD, h, tv, G, GV, US, Mixing_Energy, diagPtr,
   if (id_MLD(3) > 0) call post_data(id_MLD(3), MLD(:,:,3), diagPtr)
 
   if (present(MLD_out)) MLD_out(:,:)=MLD(:,:,1)
-
 end subroutine diagnoseMLDbyEnergy
 
 !> \namespace mom_diagnose_mld
