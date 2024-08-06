@@ -253,7 +253,7 @@ subroutine register_tracer(tr_ptr, Reg, param_file, HI, GV, name, longname, unit
   if (present(df_2d_x)) then ; if (associated(df_2d_x)) Tr%df2d_x => df_2d_x ; endif
 
   if (present(advection_xy)) then ; if (associated(advection_xy)) Tr%advection_xy => advection_xy ; endif
-  if (present(advectionc_xy)) then; if (associated(advectionc_xy)) Tr%advectionc_xy => advectionc_xy ; endif 
+  if (present(advectionc_xy)) then; if (associated(advectionc_xy)) Tr%advectionc_xy => advectionc_xy ; endif
   if (present(diffusionc_xy)) then; if (associated(diffusionc_xy)) Tr%diffusionc_xy => diffusionc_xy ; endif
   if (present(diffusion_xy)) then;  if (associated(diffusion_xy)) Tr%diffusion_xy  => diffusion_xy ;  endif
   if (present(advectionc_x)) then;  if (associated(advectionc_x)) Tr%advectionc_x  => advectionc_x ;  endif
