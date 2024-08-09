@@ -612,7 +612,6 @@ contains
         if (g_tracer_is_prog(g_tracer)) then
           do k=1,nk ;do j=jsc,jec ; do i=isc,iec
             h_work(i,j,k) = h_old(i,j,k)
-            g_tracer%boundary_forcing_tend(i,j,k) = 0
             if (g_tracer%diag_id_boundary_forcing_tend .gt. 0) then
                g_tracer%boundary_forcing_tend(i,j,k) = g_tracer%field(i,j,k,1)
             endif
