@@ -460,7 +460,7 @@ subroutine register_tracer_diagnostics(Reg, h, Time, diag, G, GV, US, use_ALE, u
         trim(shortnm)//' concentration', trim(units)//' s-1')
     Tr%id_dif_xy = register_diag_field('ocean_model',trim(shortnm)//"_diffusion_xy", &
         diag%axesTL, Time, "Horizontal convergence of residual mean diffusive fluxes of "//trim(shortnm), &
-        trim(units)//' s-1')
+        conv_units, conversion=Tr%conv_scale*US%s_to_T)
     Tr%id_advc_xy = register_diag_field('ocean_model',trim(shortnm)//"_advectionc_xy", &
         diag%axesTL, Time, "Horizontal convergence of residual mean advective fluxes of "//&
         trim(shortnm)//' concentration', trim(units)//' s-1')
