@@ -614,7 +614,7 @@ contains
             h_work(i,j,k) = h_old(i,j,k)
             if (g_tracer%diag_id_boundary_forcing_tend .gt. 0) then
                g_tracer%boundary_forcing_tend(i,j,k) = g_tracer%field(i,j,k,1)
-            endif            
+            endif
           enddo ; enddo ; enddo
           call applyTracerBoundaryFluxesInOut(G, GV, g_tracer%field(:,:,:,1), dt, &
                             fluxes, h_work, evap_CFL_limit, minimum_forcing_depth)
@@ -623,7 +623,7 @@ contains
                 g_tracer%boundary_forcing_tend(i,j,k)=G%mask2dT(i,j)*(g_tracer%field(i,j,k,1) &
                  - g_tracer%boundary_forcing_tend(i,j,k))/dt
              enddo ; enddo ; enddo
-          endif                    
+          endif
         endif
 
         !traverse the linked list till hit NULL
