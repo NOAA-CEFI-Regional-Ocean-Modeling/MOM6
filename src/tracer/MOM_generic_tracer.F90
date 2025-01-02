@@ -766,7 +766,7 @@ contains
     enddo ; enddo
     sosga = global_area_mean(surface_field, G, unscale=US%S_to_ppt)
 
-    mld_pha(:,:) = 0.0          
+    mld_pha(:,:) = 0.0
     if (.not.CS%mld_pha_calc) then
       mld_pha(:,:) = CS%mld_pha_val
     else
