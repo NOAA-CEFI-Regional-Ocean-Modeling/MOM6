@@ -97,8 +97,8 @@ contains
     real, dimension(ilb:,jlb:),optional , intent(in) :: current_wave_stress !< Unknown, and presently unused by MOM6
     real,                      optional , intent(in) :: sosga !< Global average sea surface salinity [ppt]
     real, dimension(ilb:,jlb:),optional,  intent(in) :: geolat !< Latitude
-    real, dimension(ilb:,jlb:), optional, intent(in) :: photo_acc_dpth !< The mixed layer depth calculated for photoacclimation
-                                                                       !! that is used for COBALTv3
+    real, dimension(ilb:,jlb:), optional, intent(in) :: photo_acc_dpth !< The mixed layer depth calculated for
+                                                                       !! iphotoacclimation (COBALTv3 only)
   end subroutine generic_tracer_source
 
   !> Update the tracers from bottom fluxes
