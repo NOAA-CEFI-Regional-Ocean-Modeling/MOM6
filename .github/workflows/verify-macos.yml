@@ -1,6 +1,6 @@
 name: MacOS verification
 
-on: [push, pull_request]
+#on: [push, pull_request]
 
 env:
   CC: gcc

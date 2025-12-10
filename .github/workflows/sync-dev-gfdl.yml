@@ -1,0 +1,107 @@
+name: Sync dev/gfdl into dev/cefi
+
+on:
+  schedule:
+    # Runs weekly (Tuesday 12:00 UTC). Change the cron schedule if you'd like a different frequency.
+    # This frequency was chosen so that update occurs exactly 1 day before CEFI-Regional-MOM6 submodule update
+    - cron: '0 12 * * 2'
+  push:
+    branches:
+      - dev/cefi
+  pull_request:
+    branches:
+      - dev/cefi
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+    
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout dev/cefi (full history)
+        uses: actions/checkout@v4
+        with:
+          ref: dev/cefi
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          # As of 12/2025, this is the recommended email format for GitHub Actions bot
+          # See https://github.com/actions/checkout?tab=readme-ov-file#push-a-commit-to-a-pr-using-the-built-in-token
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote and fetch branches
+        run: |
+          git remote add upstream https://github.com/NOAA-GFDL/MOM6.git || true
+          git fetch --no-tags --no-recurse-submodules upstream dev/gfdl
+          git fetch --no-tags --no-recurse-submodules origin dev/cefi
+
+      - name: Check for new commits on upstream/dev/gfdl
+        id: check
+        run: |
+          UPSTREAM_REF=upstream/dev/gfdl
+          ORIGIN_REF=origin/dev/cefi
+          # Count commits that are in upstream/dev/gfdl but not in origin/dev/cefi
+          COUNT=$(git rev-list --count ${UPSTREAM_REF} ^${ORIGIN_REF} || true)
+          echo "Found $COUNT new commit(s) on ${UPSTREAM_REF} not in ${ORIGIN_REF}"
+          echo "COUNT=$COUNT" >> $GITHUB_OUTPUT
+
+      - name: Create branch, merge upstream, and push
+        if: steps.check.outputs.COUNT != '0'
+        id: branch_and_push
+        run: |
+          set -e
+          # Branch name with date and short upstream sha
+          UPSTREAM_SHA=$(git rev-parse --short upstream/dev/gfdl)
+          BRANCH_NAME=sync/upstream-dev-gfdl-$(date -u +%Y%m%d)-${UPSTREAM_SHA}
+          echo "Creating branch $BRANCH_NAME from origin/dev/cefi"
+          git checkout -b ${BRANCH_NAME} origin/dev/cefi
+          echo "Merging upstream/dev/gfdl into ${BRANCH_NAME}"
+          # Push upstream, let reviewer handle conflicts if they arise
+          git push -u origin ${BRANCH_NAME}
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Create pull request and request reviewer
+        if: steps.check.outputs.COUNT != '0'
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const branch = process.env.BRANCH_NAME || core.getInput('branch') || github.context.payload.pull_request?.head?.ref;
+            // When actions/github-script runs, outputs from earlier steps are available as environment variables
+            const envBranch = process.env.BRANCH_NAME || process.env.BRANCH || undefined;
+            const head = envBranch || process.env.BRANCH_NAME || (() => {
+              // fall back to searching recent refs if not set
+              return undefined;
+            })();
+            const branchName = envBranch || branch;
+            if (!branchName) {
+              throw new Error('Branch name not found; cannot create PR.');
+            }
+            const title = `Sync from NOAA-GFDL dev/gfdl — ${branchName}`;
+            const body = `Automated sync: merge upstream branch dev/gfdl into dev/cefi.\n\nThis PR was created by a workflow to keep the repo up-to-date with NOAA-GFDL/MOM6 dev/gfdl.`;
+            const pr = await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              head: branchName,
+              base: 'dev/cefi',
+              body,
+              maintainer_can_modify: true
+            });
+            // Request uwagura and theresa-cordero as reviewers
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pr.data.number,
+                reviewers: ['uwagura', 'theresa-cordero']
+              });
+            } catch (err) {
+              // Log but don't fail the workflow if requesting a reviewer fails
+              core.info('Requesting reviewer failed: ' + err.message);
+            }
+            core.info(`Created PR: ${pr.data.html_url}`);

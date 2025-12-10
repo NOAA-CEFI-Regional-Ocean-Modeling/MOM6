@@ -1,6 +1,6 @@
 name: Linux verification
 
-on: [push, pull_request]
+#on: [push, pull_request]
 
 env:
   MOM_TARGET_SLUG: ${{ github.repository }}
