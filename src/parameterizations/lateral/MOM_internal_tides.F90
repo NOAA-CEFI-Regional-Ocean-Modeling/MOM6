@@ -72,7 +72,9 @@ type, public :: int_tide_CS ; private
   logical :: init_forcing_only !< if True, add TKE forcing only at first step (for debugging)
   logical :: force_posit_En    !< if True, remove subroundoff negative values (needs enhancement)
   logical :: add_tke_forcing = .true. !< Whether to add forcing, used by init_forcing_only
-
+  logical :: use_slopeloss_bug = .false. !< If true, the calculation of the residual of tranmission
+                                         !! and reflection is wrong, leading to overestimation of
+                                         !! slope loss
   real, allocatable, dimension(:,:) :: fraction_tidal_input
                         !< how the energy from one tidal component is distributed
                         !! over the various vertical modes, 2d in frequency and mode [nondim]
@@ -1502,12 +1504,15 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
           threshold_renorm_N, & ! Maximum allowable error on N profile [H T-1 ~> m s-1 or kg m-2 s-1]
           threshold_verif       ! Maximum allowable error on verification [nondim]
 
+  logical :: apply_Kd_max
   logical :: non_Bous ! fully Non-Boussinesq
   integer :: i, k, is, ie, nz
 
   is=G%isc ; ie=G%iec ; nz=GV%ke
 
   non_Bous = .not.(GV%Boussinesq .or. GV%semi_Boussinesq)
+
+  apply_Kd_max = (Kd_max >= 0.0)
 
   h_d = CS%Int_tide_decay_scale
   h_s = CS%Int_tide_decay_scale_slope
@@ -1700,7 +1705,13 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
           Kd_leak_lay(k) = 0.
         endif
         ! add to total Kd in layer
-        if (CS%update_Kd) Kd_lay(i,k) = Kd_lay(i,k) + min(Kd_leak_lay(k), Kd_max)
+        if (CS%update_Kd) then
+          if (apply_Kd_max) then
+            Kd_lay(i,k) = Kd_lay(i,k) + min(Kd_leak_lay(k), Kd_max)
+          else
+            Kd_lay(i,k) = Kd_lay(i,k) + Kd_leak_lay(k)
+          endif
+        endif
       enddo
     endif
 
@@ -1722,7 +1733,13 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
           Kd_Froude_lay(k) = 0.
         endif
         ! add to total Kd in layer
-        if (CS%update_Kd) Kd_lay(i,k) = Kd_lay(i,k) + min(Kd_Froude_lay(k), Kd_max)
+        if (CS%update_Kd) then
+          if (apply_Kd_max) then
+            Kd_lay(i,k) = Kd_lay(i,k) + min(Kd_Froude_lay(k), Kd_max)
+          else
+            Kd_lay(i,k) = Kd_lay(i,k) + Kd_Froude_lay(k)
+          endif
+        endif
       enddo
     endif
 
@@ -1744,7 +1761,13 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
           Kd_itidal_lay(k) = 0.
         endif
         ! add to total Kd in layer
-        if (CS%update_Kd) Kd_lay(i,k) = Kd_lay(i,k) + min(Kd_itidal_lay(k), Kd_max)
+        if (CS%update_Kd) then
+          if (apply_Kd_max) then
+            Kd_lay(i,k) = Kd_lay(i,k) + min(Kd_itidal_lay(k), Kd_max)
+          else
+            Kd_lay(i,k) = Kd_lay(i,k) + Kd_itidal_lay(k)
+          endif
+        endif
       enddo
     endif
 
@@ -1766,7 +1789,13 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
           Kd_slope_lay(k) = 0.
         endif
         ! add to total Kd in layer
-        if (CS%update_Kd) Kd_lay(i,k) = Kd_lay(i,k) + min(Kd_slope_lay(k), Kd_max)
+        if (CS%update_Kd) then
+          if (apply_Kd_max) then
+            Kd_lay(i,k) = Kd_lay(i,k) + min(Kd_slope_lay(k), Kd_max)
+          else
+            Kd_lay(i,k) = Kd_lay(i,k) + Kd_slope_lay(k)
+          endif
+        endif
       enddo
     endif
 
@@ -1788,7 +1817,13 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
           Kd_quad_lay(k) = 0.
         endif
         ! add to total Kd in layer
-        if (CS%update_Kd) Kd_lay(i,k) = Kd_lay(i,k) + min(Kd_quad_lay(k), Kd_max)
+        if (CS%update_Kd) then
+          if (apply_Kd_max) then
+            Kd_lay(i,k) = Kd_lay(i,k) + min(Kd_quad_lay(k), Kd_max)
+          else
+            Kd_lay(i,k) = Kd_lay(i,k) + Kd_quad_lay(k)
+          endif
+        endif
       enddo
     endif
 
@@ -1798,7 +1833,13 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
         if (k>1)    Kd_leak(i,K) = 0.5*Kd_leak_lay(k-1)
         if (k<nz+1) Kd_leak(i,K) = Kd_leak(i,K) + 0.5*Kd_leak_lay(k)
         ! add to Kd_int
-        if (CS%update_Kd) Kd_int(i,K) = Kd_int(i,K) + min(Kd_leak(i,K), Kd_max)
+        if (CS%update_Kd) then
+          if (apply_Kd_max) then
+            Kd_int(i,K) = Kd_int(i,K) + min(Kd_leak(i,K), Kd_max)
+          else
+            Kd_int(i,K) = Kd_int(i,K)
+          endif
+        endif
       enddo
     endif
 
@@ -1807,8 +1848,14 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
         if (k>1)    Kd_itidal(i,K) = 0.5*Kd_itidal_lay(k-1)
         if (k<nz+1) Kd_itidal(i,K) = Kd_itidal(i,K) + 0.5*Kd_itidal_lay(k)
         ! add to Kd_int
-        if (CS%update_Kd) Kd_int(i,K) = Kd_int(i,K) + min(Kd_itidal(i,K), Kd_max)
-      enddo
+        if (CS%update_Kd) then
+          if (apply_Kd_max) then
+            Kd_int(i,K) = Kd_int(i,K) + min(Kd_itidal(i,K), Kd_max)
+          else
+            Kd_int(i,K) = Kd_int(i,K)
+          endif
+        endif
+     enddo
     endif
 
     if (CS%apply_Froude_drag) then
@@ -1816,8 +1863,14 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
         if (k>1)    Kd_Froude(i,K) = 0.5*Kd_Froude_lay(k-1)
         if (k<nz+1) Kd_Froude(i,K) = Kd_Froude(i,K) + 0.5*Kd_Froude_lay(k)
         ! add to Kd_int
-        if (CS%update_Kd) Kd_int(i,K) = Kd_int(i,K) + min(Kd_Froude(i,K), Kd_max)
-      enddo
+        if (CS%update_Kd) then
+          if (apply_Kd_max) then
+            Kd_int(i,K) = Kd_int(i,K) + min(Kd_Froude(i,K), Kd_max)
+          else
+            Kd_int(i,K) = Kd_int(i,K)
+          endif
+        endif
+     enddo
     endif
 
     if (CS%apply_residual_drag) then
@@ -1825,8 +1878,14 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
         if (k>1)    Kd_slope(i,K) = 0.5*Kd_slope_lay(k-1)
         if (k<nz+1) Kd_slope(i,K) = Kd_slope(i,K) + 0.5*Kd_slope_lay(k)
         ! add to Kd_int
-        if (CS%update_Kd) Kd_int(i,K) = Kd_int(i,K) + min(Kd_slope(i,K), Kd_max)
-      enddo
+        if (CS%update_Kd) then
+          if (apply_Kd_max) then
+            Kd_int(i,K) = Kd_int(i,K) + min(Kd_slope(i,K), Kd_max)
+          else
+            Kd_int(i,K) = Kd_int(i,K)
+          endif
+        endif
+     enddo
     endif
 
     if (CS%apply_bottom_drag) then
@@ -1834,8 +1893,14 @@ subroutine get_lowmode_diffusivity(G, GV, h, tv, US, h_bot, k_bot, j, N2_lay, N2
         if (k>1)    Kd_quad(i,K) = 0.5*Kd_quad_lay(k-1)
         if (k<nz+1) Kd_quad(i,K) = Kd_quad(i,K) + 0.5*Kd_quad_lay(k)
         ! add to Kd_int
-        if (CS%update_Kd) Kd_int(i,K) = Kd_int(i,K) + min(Kd_quad(i,K), Kd_max)
-      enddo
+        if (CS%update_Kd) then
+          if (apply_Kd_max) then
+            Kd_int(i,K) = Kd_int(i,K) + min(Kd_quad(i,K), Kd_max)
+          else
+            Kd_int(i,K) = Kd_int(i,K)
+          endif
+        endif
+     enddo
     endif
   enddo ! i-loop
 
@@ -3401,6 +3466,8 @@ subroutine internal_tides_init(Time, G, GV, US, param_file, diag, CS)
                                                  ! lost to the interior ocean internal wave field [T-1 ~> s-1].
   logical :: use_int_tides, use_temperature
   logical :: om4_remap_via_sub_cells ! Use the OM4-era ramap_via_sub_cells for calculating the EBT structure
+  logical :: enable_bugs  ! If true, the defaults for recently added bug-fix flags are set to
+                          ! recreate the bugs, or if false bugs are only used if actively selected.
   real    :: IGW_c1_thresh ! A threshold first mode internal wave speed below which all higher
                  ! mode speeds are not calculated but simply assigned a speed of 0 [L T-1 ~> m s-1].
   real    :: kappa_h2_factor    ! A roughness scaling factor [nondim]
@@ -3559,6 +3626,11 @@ subroutine internal_tides_init(Time, G, GV, US, param_file, diag, CS)
   call get_param(param_file, mdl, "INTERNAL_TIDES_FORCE_POS_EN", CS%force_posit_En, &
                  "If true, force energy to be positive by removing subroundoff negative values.", &
                  default=.true.)
+  call get_param(param_file, mdl, "ENABLE_BUGS_BY_DEFAULT", enable_bugs, &
+                 default=.true., do_not_log=.true.)  ! This is logged from MOM.F90.
+  call get_param(param_file, mdl, "INTTIDES_SLOPELOSS_BUG", CS%use_slopeloss_bug, &
+                 "If true, slope loss is overestimated because of wrong calculation of residual"//&
+                 "of the transmission and reflection", default=enable_bugs)
   call get_param(param_file, mdl, "KD_MIN", CS%Kd_min, &
                  "The minimum diapycnal diffusivity.", &
                  units="m2 s-1", default=2e-6, scale=GV%m2_s_to_HZ_T)
@@ -3865,7 +3937,11 @@ subroutine internal_tides_init(Time, G, GV, US, param_file, diag, CS)
   if (CS%apply_residual_drag) then
     do j=G%jsc,G%jec ; do i=G%isc,G%iec
       if (CS%refl_pref_logical(i,j)) then
-        CS%residual(i,j) = 1. - (CS%refl_pref(i,j) - CS%trans(i,j))
+        if (CS%use_slopeloss_bug) then
+          CS%residual(i,j) = 1. - (CS%refl_pref(i,j) - CS%trans(i,j))
+        else
+          CS%residual(i,j) = (1. - CS%refl_pref(i,j)) - CS%trans(i,j)
+        endif
       endif
     enddo ; enddo
     call pass_var(CS%residual, G%domain)
